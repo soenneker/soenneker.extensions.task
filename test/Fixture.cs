@@ -8,7 +8,7 @@ namespace Soenneker.Extensions.Task.Tests;
 
 public class Fixture : UnitFixture
 {
-    public override async Task InitializeAsync()
+    public override async System.Threading.Tasks.Task InitializeAsync()
     {
         SetupIoC(Services);
 
