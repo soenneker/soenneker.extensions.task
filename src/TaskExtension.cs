@@ -23,4 +23,20 @@ public static class TaskExtension
     {
         return task.ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Equivalent to <code>new ValueTask(task)</code>
+    /// </summary>
+    public static ValueTask ToValueTask(this System.Threading.Tasks.Task task)
+    {
+        return new ValueTask(task);
+    }
+
+    /// <summary>
+    /// Equivalent to <code>new ValueTask(task)</code>
+    /// </summary>
+    public static ValueTask<T> ToValueTask<T>(this Task<T> task)
+    {
+        return new ValueTask<T>(task);
+    }
 }
