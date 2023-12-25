@@ -8,5 +8,5 @@
 ## Installation
 
 ```
-Install-Package Soenneker.Extensions.Task
+dotnet add package Soenneker.Extensions.Task
 ```
