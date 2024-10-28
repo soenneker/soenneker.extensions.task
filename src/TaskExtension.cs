@@ -14,7 +14,6 @@ public static class TaskExtension
     /// </summary>
     /// <param name="task">The <see cref="Task"/> to configure.</param>
     /// <returns>A configured task awaitable.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ConfiguredTaskAwaitable NoSync(this System.Threading.Tasks.Task task)
     {
         return task.ConfigureAwait(false);
@@ -27,7 +26,6 @@ public static class TaskExtension
     /// <typeparam name="T">The type of the result produced by this <see cref="Task{TResult}"/>.</typeparam>
     /// <param name="task">The <see cref="Task{TResult}"/> to configure.</param>
     /// <returns>A configured task awaitable.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ConfiguredTaskAwaitable<T> NoSync<T>(this Task<T> task)
     {
         return task.ConfigureAwait(false);
@@ -40,7 +38,6 @@ public static class TaskExtension
     /// </summary>
     /// <param name="task">The <see cref="Task"/> to convert.</param>
     /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ValueTask ToValueTask(this System.Threading.Tasks.Task task)
     {
         if (task.IsCompletedSuccessfully)
@@ -57,7 +54,6 @@ public static class TaskExtension
     /// <typeparam name="T">The type of the result produced by the task.</typeparam>
     /// <param name="task">The <see cref="Task{TResult}"/> to convert.</param>
     /// <returns>A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ValueTask<T> ToValueTask<T>(this Task<T> task)
     {
         if (task.IsCompletedSuccessfully)
