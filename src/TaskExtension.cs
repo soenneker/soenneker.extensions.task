@@ -64,25 +64,25 @@ public static class TaskExtension
     }
 
     /// <summary>
-    /// Synchronously runs the specified <see cref="Task"/>.
+    /// Synchronously awaits the specified <see cref="Task"/>.
     /// </summary>
-    /// <param name="task">The <see cref="Task"/> to run synchronously.</param>
+    /// <param name="task">The <see cref="Task"/> to await synchronously.</param>
     /// <remarks>
     /// This method blocks the calling thread until the task completes. This may lead to deadlocks
     /// if called on a context that does not allow synchronous blocking (e.g., UI thread).
     /// </remarks>
     /// <exception cref="OperationCanceledException">The task was canceled.</exception>
     /// <exception cref="Exception">The task faulted and threw an exception.</exception>
-    public static void RunSync(this System.Threading.Tasks.Task task)
+    public static void AwaitSync(this System.Threading.Tasks.Task task)
     {
         task.GetAwaiter().GetResult();
     }
 
     /// <summary>
-    /// Synchronously runs the specified <see cref="Task{TResult}"/> and returns its result.
+    /// Synchronously awaits the specified <see cref="Task{TResult}"/> and returns its result.
     /// </summary>
     /// <typeparam name="T">The result type of the <see cref="Task{T}"/>.</typeparam>
-    /// <param name="task">The <see cref="Task{T}"/> to run synchronously.</param>
+    /// <param name="task">The <see cref="Task{T}"/> to await synchronously.</param>
     /// <returns>The result of the completed <see cref="Task{T}"/>.</returns>
     /// <remarks>
     /// This method blocks the calling thread until the task completes. This may lead to deadlocks
@@ -90,7 +90,7 @@ public static class TaskExtension
     /// </remarks>
     /// <exception cref="OperationCanceledException">The task was canceled.</exception>
     /// <exception cref="Exception">The task faulted and threw an exception.</exception>
-    public static T RunSync<T>(this Task<T> task)
+    public static T AwaitSync<T>(this Task<T> task)
     {
         return task.GetAwaiter().GetResult();
     }
