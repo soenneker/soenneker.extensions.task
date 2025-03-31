@@ -136,4 +136,40 @@ public static class TaskExtension
         return System.Threading.Tasks.Task.Run(() => func(cancellationToken), cancellationToken).GetAwaiter().GetResult();
     }
 
+    /// <summary>
+    /// Executes an asynchronous operation in a synchronous context by offloading it to a background thread,
+    /// avoiding potential deadlocks that can occur when blocking on async code (e.g., on the UI thread).
+    /// </summary>
+    /// <param name="func">The asynchronous operation to execute.</param>
+    /// <remarks>
+    /// This method is useful in contexts where asynchronous code must be invoked synchronously (e.g., in constructors,
+    /// event handlers, or system callbacks such as BroadcastReceivers). The operation is executed on the thread pool
+    /// using <see cref="Task.Run(System.Action)"/>, which helps prevent common deadlock scenarios caused by
+    /// synchronously waiting on async operations that capture a synchronization context.
+    /// </remarks>
+    /// <exception cref="AggregateException">Thrown if the task faults and throws an exception.</exception>
+    public static void AwaitSyncSafe(this Func<System.Threading.Tasks.Task> func)
+    {
+        System.Threading.Tasks.Task.Run(func).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Executes an asynchronous operation that returns a result in a synchronous context by offloading it to a background thread,
+    /// avoiding potential deadlocks that can occur when blocking on async code (e.g., on the UI thread).
+    /// </summary>
+    /// <typeparam name="T">The type of result returned by the asynchronous operation.</typeparam>
+    /// <param name="func">The asynchronous operation to execute, returning a <see cref="Task{T}"/>.</param>
+    /// <returns>The result of the asynchronous operation.</returns>
+    /// <remarks>
+    /// This method is useful in contexts where asynchronous code must be invoked synchronously (e.g., in constructors,
+    /// event handlers, or system callbacks such as BroadcastReceivers). The operation is executed on the thread pool
+    /// using <see cref="Task.Run(System.Func{Task{T}})"/>, which helps prevent common deadlock scenarios caused by
+    /// synchronously waiting on async operations that capture a synchronization context.
+    /// </remarks>
+    /// <exception cref="AggregateException">Thrown if the task faults and throws an exception.</exception>
+    public static T AwaitSyncSafe<T>(this Func<Task<T>> func)
+    {
+        return System.Threading.Tasks.Task.Run(func).GetAwaiter().GetResult();
+    }
+
 }
