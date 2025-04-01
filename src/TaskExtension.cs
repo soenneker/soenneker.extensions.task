@@ -95,81 +95,32 @@ public static class TaskExtension
     {
         return task.GetAwaiter().GetResult();
     }
-
+    
     /// <summary>
-    /// Executes an asynchronous operation in a synchronous context by offloading it to a background thread,
-    /// avoiding potential deadlocks that can occur when blocking on async code (e.g., on the UI thread).
+    /// Synchronously waits for a <see cref="Task"/> to complete in a safe manner,
+    /// avoiding deadlocks by offloading the execution to a background thread and not capturing the synchronization context.
     /// </summary>
-    /// <param name="func">The asynchronous operation to execute, accepting a <see cref="CancellationToken"/>.</param>
-    /// <param name="cancellationToken">An optional cancellation token to observe during execution.</param>
-    /// <remarks>
-    /// This method is useful in contexts where asynchronous code must be invoked synchronously (e.g., in constructors,
-    /// event handlers, or system callbacks such as BroadcastReceivers). The operation is executed on the thread pool
-    /// using <see cref="Task.Run(System.Action)"/>, which helps prevent common deadlock scenarios caused by
-    /// synchronously waiting on async operations that capture a synchronization context.
-    /// </remarks>
-    /// <exception cref="OperationCanceledException">Thrown if the task is canceled via the provided <paramref name="cancellationToken"/>.</exception>
-    /// <exception cref="AggregateException">Thrown if the task faults and throws an exception.</exception>
-    public static void AwaitSyncSafe(this Func<CancellationToken, System.Threading.Tasks.Task> func, CancellationToken cancellationToken = default)
+    /// <param name="task">The <see cref="Task"/> to wait for.</param>
+    /// <param name="cancellationToken">An optional <see cref="CancellationToken"/> to cancel the background operation.</param>
+    /// <exception cref="OperationCanceledException">Thrown if the operation is canceled via the provided token.</exception>
+    /// <exception cref="AggregateException">Thrown if the task faults; inner exceptions contain the actual errors.</exception>
+    public static void AwaitSyncSafe(this System.Threading.Tasks.Task task, CancellationToken cancellationToken = default)
     {
-        System.Threading.Tasks.Task.Run(() => func(cancellationToken), cancellationToken).GetAwaiter().GetResult();
+        System.Threading.Tasks.Task.Run(async () => await task.ConfigureAwait(false), cancellationToken).GetAwaiter().GetResult();
     }
 
     /// <summary>
-    /// Executes an asynchronous operation that returns a result in a synchronous context by offloading it to a background thread,
-    /// avoiding potential deadlocks that can occur when blocking on async code (e.g., on the UI thread).
+    /// Synchronously waits for a <see cref="Task{TResult}"/> to complete and returns its result in a safe manner,
+    /// avoiding deadlocks by offloading the execution to a background thread and not capturing the synchronization context.
     /// </summary>
-    /// <typeparam name="T">The type of result returned by the asynchronous operation.</typeparam>
-    /// <param name="func">The asynchronous operation to execute, accepting a <see cref="CancellationToken"/> and returning a <see cref="Task{T}"/>.</param>
-    /// <param name="cancellationToken">An optional cancellation token to observe during execution.</param>
-    /// <returns>The result of the asynchronous operation.</returns>
-    /// <remarks>
-    /// This method is useful in contexts where asynchronous code must be invoked synchronously (e.g., in constructors,
-    /// event handlers, or system callbacks such as BroadcastReceivers). The operation is executed on the thread pool
-    /// using <see cref="Task.Run(System.Func{TResult})"/>, which helps prevent common deadlock scenarios caused by
-    /// synchronously waiting on async operations that capture a synchronization context.
-    /// </remarks>
-    /// <exception cref="OperationCanceledException">Thrown if the task is canceled via the provided <paramref name="cancellationToken"/>.</exception>
-    /// <exception cref="AggregateException">Thrown if the task faults and throws an exception.</exception>
-    public static T AwaitSyncSafe<T>(this Func<CancellationToken, Task<T>> func, CancellationToken cancellationToken = default)
+    /// <typeparam name="T">The result type of the <see cref="Task{TResult}"/>.</typeparam>
+    /// <param name="task">The <see cref="Task{TResult}"/> to wait for.</param>
+    /// <param name="cancellationToken">An optional <see cref="CancellationToken"/> to cancel the background operation.</param>
+    /// <returns>The result of the completed task.</returns>
+    /// <exception cref="OperationCanceledException">Thrown if the operation is canceled via the provided token.</exception>
+    /// <exception cref="AggregateException">Thrown if the task faults; inner exceptions contain the actual errors.</exception>
+    public static T AwaitSyncSafe<T>(this Task<T> task, CancellationToken cancellationToken = default)
     {
-        return System.Threading.Tasks.Task.Run(() => func(cancellationToken), cancellationToken).GetAwaiter().GetResult();
+        return System.Threading.Tasks.Task.Run(async () => await task.ConfigureAwait(false), cancellationToken).GetAwaiter().GetResult();
     }
-
-    /// <summary>
-    /// Executes an asynchronous operation in a synchronous context by offloading it to a background thread,
-    /// avoiding potential deadlocks that can occur when blocking on async code (e.g., on the UI thread).
-    /// </summary>
-    /// <param name="func">The asynchronous operation to execute.</param>
-    /// <remarks>
-    /// This method is useful in contexts where asynchronous code must be invoked synchronously (e.g., in constructors,
-    /// event handlers, or system callbacks such as BroadcastReceivers). The operation is executed on the thread pool
-    /// using <see cref="Task.Run(System.Action)"/>, which helps prevent common deadlock scenarios caused by
-    /// synchronously waiting on async operations that capture a synchronization context.
-    /// </remarks>
-    /// <exception cref="AggregateException">Thrown if the task faults and throws an exception.</exception>
-    public static void AwaitSyncSafe(this Func<System.Threading.Tasks.Task> func)
-    {
-        System.Threading.Tasks.Task.Run(func).GetAwaiter().GetResult();
-    }
-
-    /// <summary>
-    /// Executes an asynchronous operation that returns a result in a synchronous context by offloading it to a background thread,
-    /// avoiding potential deadlocks that can occur when blocking on async code (e.g., on the UI thread).
-    /// </summary>
-    /// <typeparam name="T">The type of result returned by the asynchronous operation.</typeparam>
-    /// <param name="func">The asynchronous operation to execute, returning a <see cref="Task{T}"/>.</param>
-    /// <returns>The result of the asynchronous operation.</returns>
-    /// <remarks>
-    /// This method is useful in contexts where asynchronous code must be invoked synchronously (e.g., in constructors,
-    /// event handlers, or system callbacks such as BroadcastReceivers). The operation is executed on the thread pool
-    /// using <see cref="Task.Run(System.Func{Task{T}})"/>, which helps prevent common deadlock scenarios caused by
-    /// synchronously waiting on async operations that capture a synchronization context.
-    /// </remarks>
-    /// <exception cref="AggregateException">Thrown if the task faults and throws an exception.</exception>
-    public static T AwaitSyncSafe<T>(this Func<Task<T>> func)
-    {
-        return System.Threading.Tasks.Task.Run(func).GetAwaiter().GetResult();
-    }
-
 }
