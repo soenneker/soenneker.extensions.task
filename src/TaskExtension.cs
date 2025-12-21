@@ -16,6 +16,7 @@ public static class TaskExtension
     /// </summary>
     /// <param name="task">The <see cref="Task"/> to configure.</param>
     /// <returns>A configured task awaitable.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ConfiguredTaskAwaitable NoSync(this System.Threading.Tasks.Task task)
     {
         return task.ConfigureAwait(false);
@@ -28,6 +29,7 @@ public static class TaskExtension
     /// <typeparam name="T">The type of the result produced by this <see cref="Task{TResult}"/>.</typeparam>
     /// <param name="task">The <see cref="Task{TResult}"/> to configure.</param>
     /// <returns>A configured task awaitable.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ConfiguredTaskAwaitable<T> NoSync<T>(this Task<T> task)
     {
         return task.ConfigureAwait(false);
@@ -40,6 +42,7 @@ public static class TaskExtension
     /// </summary>
     /// <param name="task">The <see cref="Task"/> to convert.</param>
     /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ValueTask ToValueTask(this System.Threading.Tasks.Task task)
     {
         if (task.IsCompletedSuccessfully)
@@ -56,6 +59,7 @@ public static class TaskExtension
     /// <typeparam name="T">The type of the result produced by the task.</typeparam>
     /// <param name="task">The <see cref="Task{TResult}"/> to convert.</param>
     /// <returns>A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ValueTask<T> ToValueTask<T>(this Task<T> task)
     {
         if (task.IsCompletedSuccessfully)
@@ -76,7 +80,8 @@ public static class TaskExtension
     /// <exception cref="Exception">The task faulted and threw an exception.</exception>
     public static void AwaitSync(this System.Threading.Tasks.Task task)
     {
-        task.GetAwaiter().GetResult();
+        task.GetAwaiter()
+            .GetResult();
     }
 
     /// <summary>
@@ -93,9 +98,10 @@ public static class TaskExtension
     /// <exception cref="Exception">The task faulted and threw an exception.</exception>
     public static T AwaitSync<T>(this Task<T> task)
     {
-        return task.GetAwaiter().GetResult();
+        return task.GetAwaiter()
+                   .GetResult();
     }
-    
+
     /// <summary>
     /// Synchronously waits for a <see cref="Task"/> to complete in a safe manner,
     /// avoiding deadlocks by offloading the execution to a background thread and not capturing the synchronization context.
@@ -106,7 +112,9 @@ public static class TaskExtension
     /// <exception cref="AggregateException">Thrown if the task faults; inner exceptions contain the actual errors.</exception>
     public static void AwaitSyncSafe(this System.Threading.Tasks.Task task, CancellationToken cancellationToken = default)
     {
-        System.Threading.Tasks.Task.Run(async () => await task.ConfigureAwait(false), cancellationToken).GetAwaiter().GetResult();
+        System.Threading.Tasks.Task.Run(async () => await task.ConfigureAwait(false), cancellationToken)
+              .GetAwaiter()
+              .GetResult();
     }
 
     /// <summary>
@@ -121,6 +129,8 @@ public static class TaskExtension
     /// <exception cref="AggregateException">Thrown if the task faults; inner exceptions contain the actual errors.</exception>
     public static T AwaitSyncSafe<T>(this Task<T> task, CancellationToken cancellationToken = default)
     {
-        return System.Threading.Tasks.Task.Run(async () => await task.ConfigureAwait(false), cancellationToken).GetAwaiter().GetResult();
+        return System.Threading.Tasks.Task.Run(async () => await task.ConfigureAwait(false), cancellationToken)
+                     .GetAwaiter()
+                     .GetResult();
     }
 }
