@@ -133,4 +133,40 @@ public static class TaskExtension
                      .GetAwaiter()
                      .GetResult();
     }
+
+    /// <summary>
+    /// Fires the task without awaiting it, while ensuring any exceptions are observed.
+    /// Optionally forwards the exception to <paramref name="onException"/>.
+    /// </summary>
+    /// <param name="task">The task to run in a fire-and-forget manner.</param>
+    /// <param name="onException">Optional handler invoked if the task faults.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void FireAndForgetSafe(this System.Threading.Tasks.Task task, Action<Exception>? onException = null)
+    {
+        if (task.IsCompletedSuccessfully)
+            return;
+
+        _ = task.ContinueWith(
+            static (t, state) =>
+            {
+                // OnlyOnFaulted => Exception is non-null
+                var ex = t.Exception!.GetBaseException();
+                ((Action<Exception>?)state)?.Invoke(ex);
+            },
+            onException,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted |
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// Fires the task without awaiting it, while ensuring any exceptions are observed.
+    /// Optionally forwards the exception to <paramref name="onException"/>.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void FireAndForgetSafe<T>(this Task<T> task, Action<Exception>? onException = null)
+    {
+        FireAndForgetSafe((System.Threading.Tasks.Task)task, onException);
+    }
 }
