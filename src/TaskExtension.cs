@@ -46,7 +46,7 @@ public static class TaskExtension
     public static ValueTask ToValueTask(this System.Threading.Tasks.Task task)
     {
         if (task.IsCompletedSuccessfully)
-            return new ValueTask();
+            return default;
 
         return new ValueTask(task);
     }
@@ -63,7 +63,8 @@ public static class TaskExtension
     public static ValueTask<T> ToValueTask<T>(this Task<T> task)
     {
         if (task.IsCompletedSuccessfully)
-            return new ValueTask<T>(task.Result);
+            return new ValueTask<T>(task.GetAwaiter()
+                                        .GetResult());
 
         return new ValueTask<T>(task);
     }
@@ -78,6 +79,7 @@ public static class TaskExtension
     /// </remarks>
     /// <exception cref="OperationCanceledException">The task was canceled.</exception>
     /// <exception cref="Exception">The task faulted and threw an exception.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void AwaitSync(this System.Threading.Tasks.Task task)
     {
         task.GetAwaiter()
@@ -96,40 +98,60 @@ public static class TaskExtension
     /// </remarks>
     /// <exception cref="OperationCanceledException">The task was canceled.</exception>
     /// <exception cref="Exception">The task faulted and threw an exception.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T AwaitSync<T>(this Task<T> task)
     {
         return task.GetAwaiter()
                    .GetResult();
     }
 
+    // These helpers still create an async state machine per call (inevitable if we truly "await"),
+    // but we avoid the *extra* closure allocations from async lambdas capturing locals.
+    private static async System.Threading.Tasks.Task AwaitTaskCore(System.Threading.Tasks.Task task) => await task.ConfigureAwait(false);
+
+    private static async Task<T> AwaitTaskCoreT<T>(Task<T> task) => await task.ConfigureAwait(false);
+
     /// <summary>
-    /// Synchronously waits for a <see cref="Task"/> to complete in a safe manner,
-    /// avoiding deadlocks by offloading the execution to a background thread and not capturing the synchronization context.
+    /// Attempts to synchronously wait in a way that avoids common deadlocks by running the await on the ThreadPool.
+    /// This is still not a silver bullet; prefer async all the way when possible.
     /// </summary>
-    /// <param name="task">The <see cref="Task"/> to wait for.</param>
-    /// <param name="cancellationToken">An optional <see cref="CancellationToken"/> to cancel the background operation.</param>
-    /// <exception cref="OperationCanceledException">Thrown if the operation is canceled via the provided token.</exception>
-    /// <exception cref="AggregateException">Thrown if the task faults; inner exceptions contain the actual errors.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void AwaitSyncSafe(this System.Threading.Tasks.Task task, CancellationToken cancellationToken = default)
     {
-        System.Threading.Tasks.Task.Run(async () => await task.ConfigureAwait(false), cancellationToken)
+        ArgumentNullException.ThrowIfNull(task);
+
+        if (task.IsCompleted)
+        {
+            task.GetAwaiter()
+                .GetResult();
+            return;
+        }
+
+        // Avoid: Task.Run(async () => await task...) (closure + async state machine)
+        // Use StartNew with a static delegate + Unwrap to reduce allocations.
+        System.Threading.Tasks.Task.Factory.StartNew(static state => AwaitTaskCore((System.Threading.Tasks.Task)state!), task, cancellationToken,
+                  TaskCreationOptions.DenyChildAttach, TaskScheduler.Default)
+              .Unwrap()
               .GetAwaiter()
               .GetResult();
     }
 
     /// <summary>
-    /// Synchronously waits for a <see cref="Task{TResult}"/> to complete and returns its result in a safe manner,
-    /// avoiding deadlocks by offloading the execution to a background thread and not capturing the synchronization context.
+    /// Attempts to synchronously wait in a way that avoids common deadlocks by running the await on the ThreadPool.
+    /// This is still not a silver bullet; prefer async all the way when possible.
     /// </summary>
-    /// <typeparam name="T">The result type of the <see cref="Task{TResult}"/>.</typeparam>
-    /// <param name="task">The <see cref="Task{TResult}"/> to wait for.</param>
-    /// <param name="cancellationToken">An optional <see cref="CancellationToken"/> to cancel the background operation.</param>
-    /// <returns>The result of the completed task.</returns>
-    /// <exception cref="OperationCanceledException">Thrown if the operation is canceled via the provided token.</exception>
-    /// <exception cref="AggregateException">Thrown if the task faults; inner exceptions contain the actual errors.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T AwaitSyncSafe<T>(this Task<T> task, CancellationToken cancellationToken = default)
     {
-        return System.Threading.Tasks.Task.Run(async () => await task.ConfigureAwait(false), cancellationToken)
+        ArgumentNullException.ThrowIfNull(task);
+
+        if (task.IsCompleted)
+            return task.GetAwaiter()
+                       .GetResult();
+
+        return System.Threading.Tasks.Task.Factory.StartNew(static state => AwaitTaskCoreT((Task<T>)state!), task, cancellationToken,
+                         TaskCreationOptions.DenyChildAttach, TaskScheduler.Default)
+                     .Unwrap()
                      .GetAwaiter()
                      .GetResult();
     }
@@ -143,22 +165,27 @@ public static class TaskExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void FireAndForgetSafe(this System.Threading.Tasks.Task task, Action<Exception>? onException = null)
     {
+        ArgumentNullException.ThrowIfNull(task);
+
         if (task.IsCompletedSuccessfully)
             return;
 
-        _ = task.ContinueWith(
-            static (t, state) =>
-            {
-                // OnlyOnFaulted => Exception is non-null
-                var ex = t.Exception!.GetBaseException();
-                ((Action<Exception>?)state)?.Invoke(ex);
-            },
-            onException,
-            CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted |
-            TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
+        if (onException is null)
+        {
+            // Observe exception if it faults (continuation still allocates, but avoids base-exception work)
+            _ = task.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+
+            return;
+        }
+
+        _ = task.ContinueWith(static (t, state) =>
+        {
+            Exception ex = t.Exception!.GetBaseException();
+            ((Action<Exception>)state!).Invoke(ex);
+        }, onException, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
+
 
     /// <summary>
     /// Fires the task without awaiting it, while ensuring any exceptions are observed.
@@ -167,6 +194,11 @@ public static class TaskExtension
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void FireAndForgetSafe<T>(this Task<T> task, Action<Exception>? onException = null)
     {
-        FireAndForgetSafe((System.Threading.Tasks.Task)task, onException);
+        ArgumentNullException.ThrowIfNull(task);
+
+        if (task.IsCompletedSuccessfully)
+            return;
+
+        ((System.Threading.Tasks.Task)task).FireAndForgetSafe(onException);
     }
 }

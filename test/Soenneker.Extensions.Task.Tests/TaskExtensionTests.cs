@@ -34,7 +34,7 @@ public class TaskExtensionTests
     public void AwaitSyncSafe_Task_IsCancelled()
     {
         using var cts = new CancellationTokenSource();
-        var task = System.Threading.Tasks.Task.Run(async () =>
+        System.Threading.Tasks.Task task = System.Threading.Tasks.Task.Run(async () =>
         {
             await System.Threading.Tasks.Task.Delay(5000, cts.Token);
         }, cts.Token);
@@ -65,7 +65,7 @@ public class TaskExtensionTests
     public void AwaitSyncSafe_TaskOfT_IsCancelled()
     {
         using var cts = new CancellationTokenSource();
-        var task = System.Threading.Tasks.Task.Run(async () =>
+        Task<int> task = System.Threading.Tasks.Task.Run(async () =>
         {
             await System.Threading.Tasks.Task.Delay(5000, cts.Token);
             return 5;
