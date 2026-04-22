@@ -2,19 +2,18 @@ using AwesomeAssertions;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Xunit;
 
 namespace Soenneker.Extensions.Task.Tests;
 
 public class TaskExtensionTests
 {
-    [Fact]
+    [Test]
     public void Default()
     {
 
     }
 
-    [Fact]
+    [Test]
     public void AwaitSyncSafe_Task_CompletesSuccessfully()
     {
         System.Threading.Tasks.Task completedTask = System.Threading.Tasks.Task.Delay(100);
@@ -22,7 +21,7 @@ public class TaskExtensionTests
         act.Should().NotThrow();
     }
 
-    [Fact]
+    [Test]
     public void AwaitSyncSafe_Task_ThrowsException()
     {
         System.Threading.Tasks.Task faultedTask = System.Threading.Tasks.Task.FromException(new InvalidOperationException("Oops!"));
@@ -30,7 +29,7 @@ public class TaskExtensionTests
         act.Should().Throw<InvalidOperationException>().WithMessage("Oops!");
     }
 
-    [Fact]
+    [Test]
     public void AwaitSyncSafe_Task_IsCancelled()
     {
         using var cts = new CancellationTokenSource();
@@ -45,7 +44,7 @@ public class TaskExtensionTests
         act.Should().Throw<OperationCanceledException>();
     }
 
-    [Fact]
+    [Test]
     public void AwaitSyncSafe_TaskOfT_CompletesSuccessfully()
     {
         Task<int> task = System.Threading.Tasks.Task.FromResult(42);
@@ -53,7 +52,7 @@ public class TaskExtensionTests
         result.Should().Be(42);
     }
 
-    [Fact]
+    [Test]
     public void AwaitSyncSafe_TaskOfT_ThrowsException()
     {
         Task<int> task = System.Threading.Tasks.Task.FromException<int>(new InvalidOperationException("Broken"));
@@ -61,7 +60,7 @@ public class TaskExtensionTests
         act.Should().Throw<InvalidOperationException>().WithMessage("Broken");
     }
 
-    [Fact]
+    [Test]
     public void AwaitSyncSafe_TaskOfT_IsCancelled()
     {
         using var cts = new CancellationTokenSource();
