@@ -140,6 +140,7 @@ public static class TaskExtension
     /// Attempts to synchronously wait in a way that avoids common deadlocks by running the await on the ThreadPool.
     /// This is still not a silver bullet; prefer async all the way when possible.
     /// </summary>
+    /// <returns>Attempts to synchronously wait in a way that avoids common deadlocks by running the await on the ThreadPool. This is still not a silver bullet; prefer async all the way when possible.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T AwaitSyncSafe<T>(this Task<T> task, CancellationToken cancellationToken = default)
     {
