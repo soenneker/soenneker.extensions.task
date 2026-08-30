@@ -4,7 +4,7 @@
 [![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.extensions.task/codeql.yml?label=CodeQL&style=for-the-badge)](https://github.com/soenneker/soenneker.extensions.task/actions/workflows/codeql.yml)
 
 # ![](https://user-images.githubusercontent.com/4441470/224455560-91ed3ee7-f510-4041-a8d2-3fc093025112.png) Soenneker.Extensions.Task
-A collection of helpful Task extension methods.
+Focused helpers for `ConfigureAwait(false)`, `Task`/`ValueTask` adaptation, synchronous bridges, and observed fire-and-forget work.
 
 ## Installation
 
@@ -12,19 +12,39 @@ A collection of helpful Task extension methods.
 dotnet add package Soenneker.Extensions.Task
 ```
 
-## Quick start
+## Avoid context capture
 
 ```csharp
 using Soenneker.Extensions.Task;
 
-// Given an existing System.Threading.Tasks.Task named task:
-var result = task.NoSync();
+HttpResponseMessage response = await httpClient.GetAsync(uri).NoSync();
 ```
 
-## Common operations
+`NoSync()` is shorthand for `ConfigureAwait(false)` for both `Task` and `Task<T>`. It prevents the await from requesting the current synchronization context; it does not guarantee that the continuation runs on a different thread.
 
-- `NoSync()` - Configures an awaiter used to await this `Task` to continue on a different context. Equivalent to `task.ConfigureAwait(false);`.
-- `ToValueTask()` - Converts a `Task` to a `ValueTask`. If the task is already completed successfully, returns a completed `ValueTask`. Equivalent to `new ValueTask(task)`.
-- `AwaitSync()` - Synchronously awaits the specified `Task`. This method blocks the calling thread until the task completes.
-- `AwaitSyncSafe()` - Attempts to synchronously wait in a way that avoids common deadlocks by running the await on the ThreadPool. This is still not a silver bullet; prefer async all the way when possible.
-- `FireAndForgetSafe()` - Fires the task without awaiting it, while ensuring any exceptions are observed. Optionally forwards the exception to `onException`.
+## Adapt a Task to ValueTask
+
+```csharp
+ValueTask operation = task.ToValueTask();
+ValueTask<int> valueOperation = valueTaskSource.ToValueTask();
+```
+
+The completed-success fast path avoids wrapping the original task. Faults and cancellation are preserved. Use this at API boundaries only; converting an existing `Task` does not recover an allocation that already occurred, and a `ValueTask` should normally be awaited only once.
+
+## Synchronous bridges
+
+```csharp
+Result result = GetResultAsync().AwaitSync();
+```
+
+`AwaitSync()` blocks the calling thread and unwraps the original exception through `GetAwaiter().GetResult()`. `AwaitSyncSafe()` moves the wrapper await to `TaskScheduler.Default`, but it still blocks and cannot rescue a task whose completion itself requires the blocked UI or request context. Prefer async all the way.
+
+The cancellation token on `AwaitSyncSafe()` controls scheduling of its wrapper; it does not cancel the supplied task. If the task is already complete, its result, exception, or cancellation wins directly.
+
+## Observe detached work
+
+```csharp
+SaveAuditAsync().FireAndForgetSafe(exception => logger.LogError(exception, "Audit save failed"));
+```
+
+`FireAndForgetSafe()` observes task faults and optionally invokes a synchronous callback with the base exception. Callback failures are swallowed so the detached continuation cannot create another unobserved fault. This does not keep a process alive, retry failed work, propagate cancellation, or provide delivery guarantees; use a durable background queue for important work.

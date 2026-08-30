@@ -11,7 +11,7 @@ namespace Soenneker.Extensions.Task;
 public static class TaskExtension
 {
     /// <summary>
-    /// Configures an awaiter used to await this <see cref="Task"/> to continue on a different context.
+    /// Configures an awaiter that does not capture the current synchronization context.
     /// Equivalent to <code>task.ConfigureAwait(false);</code>.
     /// </summary>
     /// <param name="task">The <see cref="Task"/> to configure.</param>
@@ -23,7 +23,7 @@ public static class TaskExtension
     }
 
     /// <summary>
-    /// Configures an awaiter used to await this <see cref="Task{TResult}"/> to continue on a different context.
+    /// Configures an awaiter that does not capture the current synchronization context.
     /// Equivalent to <code>task.ConfigureAwait(false);</code>.
     /// </summary>
     /// <typeparam name="T">The type of the result produced by this <see cref="Task{TResult}"/>.</typeparam>
@@ -183,7 +183,15 @@ public static class TaskExtension
         _ = task.ContinueWith(static (t, state) =>
         {
             Exception ex = t.Exception!.GetBaseException();
-            ((Action<Exception>)state!).Invoke(ex);
+            try
+            {
+                ((Action<Exception>)state!).Invoke(ex);
+            }
+            catch
+            {
+                // The continuation is intentionally detached. Do not create another unobserved fault
+                // when the diagnostic callback itself fails.
+            }
         }, onException, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
